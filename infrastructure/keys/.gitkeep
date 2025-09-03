@@ -1,0 +1,2 @@
+# Keep this directory in git
+# The actual SSH keys will be generated during deployment
