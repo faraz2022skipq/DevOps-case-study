@@ -26,4 +26,3 @@ urlpatterns = [
     path("healthz", healthz),
     path("api/", include("items.urls"))
 ]
-
