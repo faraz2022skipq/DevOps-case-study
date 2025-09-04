@@ -191,7 +191,7 @@ jobs:
               # EOF
 
               # Insert sample data into PostgreSQL
-              PGPASSWORD=${{env.POSTGRES_PASSWORD}} psql -h ${{env.POSTGRES_HOST}} -U ${{env.POSTGRES_USER}} -d ${{env.POSTGRES_DB}} -c "INSERT INTO items_item (name, description) VALUES ('Sample Item 1', 'Inserted via GitHub Action'), ('Sample Item 2', 'Inserted via GitHub Action'), ('Sample Item 3', 'Inserted via GitHub Action');"
+              PGPASSWORD=${{env.POSTGRES_PASSWORD}} psql -h ${{env.POSTGRES_HOST}} -U ${{env.POSTGRES_USER}} -d ${{env.POSTGRES_DB}} -c "INSERT INTO items_item (name, description) VALUES (''Sample Item 1'', ''Inserted via GitHub Action''), (''Sample Item 2'', ''Inserted via GitHub Action''), (''Sample Item 3'', ''Inserted via GitHub Action'');"
 
             ' 
   build-frontend:
