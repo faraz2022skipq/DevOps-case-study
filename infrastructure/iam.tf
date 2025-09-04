@@ -155,6 +155,47 @@ resource "aws_iam_policy" "cloudwatch_logs_policy" {
   })
 }
 
+### UPDATED ONE
+
+# resource "aws_iam_policy" "cloudwatch_logs_policy" {
+#   name        = "EC2CloudWatchLogsPolicy"
+#   description = "Allow EC2 to pull images from ECR and push logs to CloudWatch"
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Effect = "Allow"
+#         Action = [
+#           "ecr:GetAuthorizationToken",
+#           "ecr:BatchCheckLayerAvailability",
+#           "ecr:GetDownloadUrlForLayer",
+#           "ecr:GetRepositoryPolicy",
+#           "ecr:DescribeRepositories",
+#           "ecr:ListImages",
+#           "ecr:DescribeImages",
+#           "ecr:BatchGetImage",
+#           "ecr:GetLifecyclePolicy",
+#           "ecr:GetLifecyclePolicyPreview",
+#           "ecr:ListTagsForResource",
+#           "ecr:DescribeImageScanFindings"
+#         ]
+#         Resource = "*"
+#       },
+#       {
+#         Effect = "Allow"
+#         Action = [
+#           "logs:CreateLogGroup",
+#           "logs:CreateLogStream",
+#           "logs:PutLogEvents",
+#           "logs:DescribeLogStreams"
+#         ]
+#         Resource = "arn:aws:logs:*:*:*"
+#       }
+#     ]
+#   })
+# }
+
+
 # Attach policy to role
 resource "aws_iam_role_policy_attachment" "ec2_cloudwatch_attach" {
   role       = aws_iam_role.ec2_cloudwatch_role.name
