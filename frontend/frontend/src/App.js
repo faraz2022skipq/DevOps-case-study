@@ -4,8 +4,8 @@ function App() {
   const [healthStatus, setHealthStatus] = useState("");
   const [items, setItems] = useState([]);
 
-  const backendBaseUrl = "http://54.219.246.102";
-  // const backendBaseUrl = process.env.REACT_APP_API_BASE || "http://localhost";
+  // const backendBaseUrl = "http://54.219.246.102";
+  const backendBaseUrl = process.env.REACT_APP_API_BASE;
 
   // Check health
   const checkHealth = async () => {
