@@ -171,14 +171,25 @@ jobs:
               docker compose down
               docker compose up -d
 
+              # Generate new migrations
+              docker compose exec -T backend python manage.py makemigrations
+
               # Run migrations
               docker compose exec -T backend python manage.py migrate
 
               # Collect static files
               docker compose exec -T backend python manage.py collectstatic --noinput
 
-              # Insert sample data into PostgreSQL
-              PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -c "INSERT INTO items_item (name, description) VALUES (''Sample Item 1'', ''Inserted via GitHub Action''), (''Sample Item 2'', ''Inserted via GitHub Action''), (''Sample Item 3'', ''Inserted via GitHub Action'');"
+              docker compose exec -T backend python manage.py shell -c "
+                from items.models import Item
+                Item.objects.get_or_create(name='Sample Item 1', defaults={'description': 'Inserted via GitHub Action'})
+                Item.objects.get_or_create(name='Sample Item 2', defaults={'description': 'Inserted via GitHub Action'})
+                Item.objects.get_or_create(name='Sample Item 3', defaults={'description': 'Inserted via GitHub Action'})
+                print('Sample data inserted successfully')
+              "
+
+              # # Insert sample data into PostgreSQL
+              # PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -c "INSERT INTO items_item (name, description) VALUES (''Sample Item 1'', ''Inserted via GitHub Action''), (''Sample Item 2'', ''Inserted via GitHub Action''), (''Sample Item 3'', ''Inserted via GitHub Action'');"
 
             ' 
   build-frontend:
