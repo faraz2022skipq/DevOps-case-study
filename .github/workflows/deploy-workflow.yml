@@ -180,11 +180,8 @@ jobs:
               # Collect static files
               docker compose exec -T backend python manage.py collectstatic --noinput
 
-              psql "host=${{env.POSTGRES_HOST}} dbname=${{env.POSTGRES_DB}} user=${{env.POSTGRES_USER}} password=${{env.POSTGRES_PASSWORD}} sslmode=require" -c "INSERT INTO items_item (name, description) VALUES ('Sample Item 1', 'Inserted via GitHub Action'), ('Sample Item 2', 'Inserted via GitHub Action'), ('Sample Item 3', 'Inserted via GitHub Action');"
-
-
-              # # Insert sample data into PostgreSQL
-              # PGPASSWORD=${{env.POSTGRES_PASSWORD}} psql -h ${{env.POSTGRES_HOST}} -U ${{env.POSTGRES_USER}} -d ${{env.POSTGRES_DB}} -c "INSERT INTO items_item (name, description) VALUES ("'Sample Item 1'", "'Inserted via GitHub Action'"), ("'Sample Item 2'", "'Inserted via GitHub Action'"), ("'Sample Item 3'", "'Inserted via GitHub Action'");"
+              # Insert sample data into PostgreSQL
+              PGPASSWORD=${{env.POSTGRES_PASSWORD}} psql -h ${{env.POSTGRES_HOST}} -U ${{env.POSTGRES_USER}} -d ${{env.POSTGRES_DB}} -c "INSERT INTO items_item (name, description) VALUES ("'Sample_Item_1'", "'Inserted_via_GitHub_Action'"), ("'Sample_Item_2'", "'Inserted_via_GitHub Action'"), ("'Sample_Item_3'", "'Inserted_via_GitHub_Action'");"
 
             ' 
   build-frontend:
