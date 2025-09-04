@@ -131,48 +131,46 @@ jobs:
           DJANGO_SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
         run: |
-          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          
-          # Copy docker-compose file to EC2
-          scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
-          scp -o StrictHostKeyChecking=no -i private_key -r nginx ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
-          
-          # Deploy application
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-            cd /home/ubuntu/app
-
-            cat > .env <<EOT
+            echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+            
+            # Create a .env file with SSM parameters and copy it to EC2
+            cat > .env <<EOF
+            DATABASE_NAME=${DATABASE_NAME}
+            DATABASE_USER=${DATABASE_USER}
+            DATABASE_PASSWORD=${DATABASE_PASSWORD}
+            DATABASE_HOST=${DATABASE_HOST}
+            DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+            AWS_REGION=${AWS_REGION}
             ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
             IMAGE_TAG=${{ github.sha }}
-            DB_NAME=${{ env.DATABASE_NAME }}
-            DB_USER=${{ env.DATABASE_USER }}
-            DB_PASSWORD=${{ env.DATABASE_PASSWORD }}
-            DB_HOST=${{ env.DATABASE_HOST }}
-            DB_PORT=5432
-            AWS_REGION=${{ env.AWS_REGION }}
-            SECRET_KEY=${{ env.DJANGO_SECRET_KEY }}
-            EOT
+            EOF
 
-            # Set environment variables
-            export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
-            export IMAGE_TAG=${{ github.sha }}
+            scp -o StrictHostKeyChecking=no -i private_key .env ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+
+            # Copy docker-compose + nginx
+            scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+            scp -o StrictHostKeyChecking=no -i private_key -r nginx ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
             
-            # Login to ECR
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
-            
-            # Pull latest image
-            docker pull ${ECR_REPOSITORY_URL}:${IMAGE_TAG}
-            
-            # Update docker-compose and restart
-            docker compose --env-file .env down
-            docker compose --env-file .env up -d
-            
-            # Run migrations
-            docker compose --env-file .env exec-T backend python manage.py migrate
-            
-            # Collect static files
-            docker compose --env-file .env exec -T backend python manage.py collectstatic --noinput
-          '
+            # Deploy application
+            ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+              cd /home/ubuntu/app
+
+              # Login to ECR
+              aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+
+              # Pull latest image
+              docker pull $ECR_REPOSITORY_URL:$IMAGE_TAG
+
+              # Restart services using .env file
+              docker compose down
+              docker compose up -d
+
+              # Run migrations
+              docker compose exec -T backend python manage.py migrate
+
+              # Collect static files
+              docker compose exec -T backend python manage.py collectstatic --noinput
+            ' 
   build-frontend:
     needs: deploy-backend
     runs-on: ubuntu-latest
