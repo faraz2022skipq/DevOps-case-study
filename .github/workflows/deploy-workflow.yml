@@ -140,7 +140,11 @@ jobs:
             IMAGE_TAG=${{ github.sha }}
             EOF
 
-            mkdir /home/${{ secrets.EC2_USER }}/appapp/
+            ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+            # Create main app directory
+            sudo mkdir -p /home/ubuntu/app/
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/app/
+            '
 
             scp -o StrictHostKeyChecking=no -i private_key .env ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
 
