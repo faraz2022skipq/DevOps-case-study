@@ -158,9 +158,7 @@ jobs:
               cd /home/ubuntu/app
 
               # Login to ECR
-              echo $AWS_REGION
-              echo $ECR_REPOSITORY_URL
-              echo $IMAGE_TAG
+              export AWS_REGION=$AWS_REGION
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
 
               # Pull latest image
