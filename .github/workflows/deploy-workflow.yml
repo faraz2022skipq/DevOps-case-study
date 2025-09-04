@@ -181,11 +181,11 @@ jobs:
               docker compose exec -T backend python manage.py collectstatic --noinput
 
               docker compose exec -T backend python manage.py shell -c "
-                from items.models import Item
-                Item.objects.get_or_create(name='Sample Item 1', defaults={'description': 'Inserted via GitHub Action'})
-                Item.objects.get_or_create(name='Sample Item 2', defaults={'description': 'Inserted via GitHub Action'})
-                Item.objects.get_or_create(name='Sample Item 3', defaults={'description': 'Inserted via GitHub Action'})
-                print('Sample data inserted successfully')
+              from items.models import Item
+              Item.objects.get_or_create(name='Sample Item 1', defaults={'description': 'Inserted via GitHub Action'})
+              Item.objects.get_or_create(name='Sample Item 2', defaults={'description': 'Inserted via GitHub Action'})
+              Item.objects.get_or_create(name='Sample Item 3', defaults={'description': 'Inserted via GitHub Action'})
+              print('Sample data inserted successfully')
               "
 
               # # Insert sample data into PostgreSQL
