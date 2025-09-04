@@ -6,6 +6,11 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
+resource "aws_s3_object" "folder" {
+  bucket = aws_s3_bucket.frontend.bucket
+  key    = "dist/"
+}
+
 # Manage ownership & ACLs explicitly
 resource "aws_s3_bucket_ownership_controls" "frontend" {
   bucket = aws_s3_bucket.frontend.id
