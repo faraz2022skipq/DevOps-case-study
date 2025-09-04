@@ -106,12 +106,30 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-        
+
+      - name: Fetch SSM Parameters
+        id: ssm-parameters
+        run: |
+          # Fetch all SSM parameters and set them as environment variables
+          echo "DATABASE_NAME=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_name" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "DATABASE_USER=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_user" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "DATABASE_PASSWORD=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_password" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "DATABASE_HOST=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_host" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "DJANGO_SECRET_KEY=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/secret_key" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "AWS_REGION=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/aws/region" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           HOSTNAME: ${{ secrets.EC2_HOST }}
           USER_NAME: ${{ secrets.EC2_USER }}
+
+          DATABASE_NAME: ${{ env.DATABASE_NAME }}
+          DATABASE_USER: ${{ env.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          DATABASE_HOST: ${{ env.DATABASE_HOST }}
+          DJANGO_SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           
@@ -122,6 +140,18 @@ jobs:
           # Deploy application
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
             cd /home/ubuntu/app
+
+            cat > .env <<EOF
+            ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+            IMAGE_TAG=${{ github.sha }}
+            DB_NAME=${{ env.DATABASE_NAME }}
+            DB_USER=${{ env.DATABASE_USER }}
+            DB_PASSWORD=${{ env.DATABASE_PASSWORD }}
+            DB_HOST=${{ env.DATABASE_HOST }}
+            DB_PORT=5432
+            AWS_REGION=${{ env.AWS_REGION }}
+            SECRET_KEY=${{ env.DJANGO_SECRET_KEY }}
+            EOF
             
             # Set environment variables
             export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
@@ -134,14 +164,14 @@ jobs:
             docker pull ${ECR_REPOSITORY_URL}:${IMAGE_TAG}
             
             # Update docker-compose and restart
-            ECR_REPOSITORY_URL=${ECR_REPOSITORY_URL} IMAGE_TAG=${IMAGE_TAG} docker compose down
-            ECR_REPOSITORY_URL=${ECR_REPOSITORY_URL} IMAGE_TAG=${IMAGE_TAG} docker compose up -d
+            docker compose --env-file .env down
+            docker compose --env-file .env up -d
             
             # Run migrations
-            docker compose exec -T backend python manage.py migrate
+            docker compose --env-file .env exec exec -T backend python manage.py migrate
             
             # Collect static files
-            docker compose exec -T backend python manage.py collectstatic --noinput
+            docker compose --env-file .env exec exec -T backend python manage.py collectstatic --noinput
           '
   build-frontend:
     needs: deploy-backend
@@ -176,4 +206,18 @@ jobs:
         run: |
           cd frontend
           aws s3 sync frontend/build/ s3://${{ secrets.S3_BUCKET_NAME }}/ --delete
+  
+  # health-check:
+  #   needs: [deploy-backend, build-frontend]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Wait for deployment
+  #       run: sleep 30
+        
+  #     - name: Check health endpoint
+  #       run: |
+  #         curl -f http://${{ secrets.EC2_HOST }}/healthz
           
+  #     - name: Check API endpoint
+  #       run: |
+  #         curl -f http://${{ secrets.EC2_HOST }}/api/items/

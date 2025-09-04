@@ -6,11 +6,6 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
-resource "aws_s3_object" "folder" {
-  bucket = aws_s3_bucket.frontend.bucket
-  key    = "dist/"
-}
-
 # Manage ownership & ACLs explicitly
 resource "aws_s3_bucket_ownership_controls" "frontend" {
   bucket = aws_s3_bucket.frontend.id
@@ -19,11 +14,12 @@ resource "aws_s3_bucket_ownership_controls" "frontend" {
   }
 }
 
+
 resource "aws_s3_bucket_public_access_block" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
   block_public_acls       = false
-  block_public_policy     = false
+  block_public_policy     = false 
   ignore_public_acls      = false
   restrict_public_buckets = false
 }
@@ -49,4 +45,29 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
   error_document {
     key = "index.html"
   }
+}
+
+# Bucket policy for public read access
+resource "aws_s3_bucket_policy" "frontend" {
+  depends_on = [
+    aws_s3_bucket_public_access_block.frontend
+  ]
+
+  bucket = aws_s3_bucket.frontend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = "*"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.frontend.arn}/*"
+        ]
+      }
+    ]
+  })
 }

@@ -20,6 +20,13 @@ services:
     image: ${ECR_REPOSITORY_URL}:${IMAGE_TAG:-latest}
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings
+      - DB_NAME=${DATABASE_NAME}
+      - DB_USER=${DATABASE_USER}
+      - DB_PASSWORD=${DATABASE_PASSWORD}
+      - DB_HOST=${DATABASE_HOST}
+      - DB_PORT=5432
+      - AWS_REGION=${AWS_REGION}
+      - SECRET_KEY=${DJANGO_SECRET_KEY}
     ports:
       - "8000:8000"
     restart: unless-stopped
