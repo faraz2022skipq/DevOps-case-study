@@ -136,7 +136,8 @@ jobs:
             POSTGRES_HOST=${POSTGRES_HOST}
             DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
             AWS_REGION=${AWS_REGION}
-            ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+            ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}
+            ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
             IMAGE_TAG=${{ github.sha }}
             EOF
 
@@ -163,7 +164,7 @@ jobs:
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
 
               # Pull latest image
-              docker pull $ECR_REPOSITORY_URL:$IMAGE_TAG
+              docker pull $ECR_REPOSITORY_URL/$ECR_REPOSITORY:$IMAGE_TAG
 
               # Restart services using .env file
               docker compose down
