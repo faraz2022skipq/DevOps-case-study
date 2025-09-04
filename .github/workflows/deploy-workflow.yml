@@ -152,7 +152,8 @@ jobs:
             AWS_REGION=${{ env.AWS_REGION }}
             SECRET_KEY=${{ env.DJANGO_SECRET_KEY }}
             EOF
-            
+          '
+
             # Set environment variables
             export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
             export IMAGE_TAG=${{ github.sha }}

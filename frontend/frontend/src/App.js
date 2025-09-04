@@ -4,7 +4,7 @@ function App() {
   const [healthStatus, setHealthStatus] = useState("");
   const [items, setItems] = useState([]);
 
-  const backendBaseUrl = "http://54.219.246.102"; // replace with your EC2 DNS
+  const backendBaseUrl = "http://54.219.246.102";
 
   // Check health
   const checkHealth = async () => {
