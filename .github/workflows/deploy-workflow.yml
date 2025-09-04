@@ -36,11 +36,6 @@ jobs:
         run: |
           cd backend
           python manage.py check
-          
-      # - name: Run tests (if any)
-      #   run: |
-      #     cd backend
-      #     python manage.py test
 
   build-and-push:
     needs: initial-test
