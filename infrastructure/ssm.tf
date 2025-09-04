@@ -27,7 +27,7 @@ resource "aws_ssm_parameter" "database_url" {
 resource "aws_ssm_parameter" "database_host" {
   name  = "/${var.project_name}/django/database_host"
   type  = "String"
-  value = aws_db_instance.postgres.endpoint
+  value = aws_db_instance.postgres.address
 
   tags = {
     Name        = "${var.project_name}-database-host"

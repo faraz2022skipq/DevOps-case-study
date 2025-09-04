@@ -30,3 +30,8 @@ output "s3_website_endpoint" {
   description = "S3 website endpoint"
   value       = aws_s3_bucket_website_configuration.frontend.website_endpoint
 }
+
+output "db_host" {
+  description = "Host DB endpoint"
+  value = aws_db_instance.postgres.address
+}

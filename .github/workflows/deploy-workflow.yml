@@ -124,10 +124,10 @@ jobs:
           HOSTNAME: ${{ secrets.EC2_HOST }}
           USER_NAME: ${{ secrets.EC2_USER }}
 
-          DATABASE_NAME: ${{ env.DATABASE_NAME }}
-          DATABASE_USER: ${{ env.DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
-          DATABASE_HOST: ${{ env.DATABASE_HOST }}
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_HOST: ${{ env.POSTGRES_HOST }}
           DJANGO_SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
         run: |
@@ -190,6 +190,8 @@ jobs:
           npm ci
           
       - name: Build frontend
+        # env:
+        #   REACT_APP_API_BASE: ${{ env.API_BASE_URL }}
         run: |
           cd frontend/frontend
           npm run build
