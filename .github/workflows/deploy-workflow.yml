@@ -141,14 +141,17 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
             cd /home/ubuntu/app
 
-            # Set environment variables
-            export DB_NAME=${{ env.DATABASE_NAME }}
-            export DB_USER=${{ env.DATABASE_USER }}
-            export DB_PASSWORD=${{ env.DATABASE_PASSWORD }}
-            export DB_HOST=${{ env.DATABASE_HOST }}
-            export DB_PORT=5432
-            export AWS_REGION=${{ env.AWS_REGION }}
-            export SECRET_KEY=${{ env.DJANGO_SECRET_KEY }}
+            cat > .env <<EOT
+            ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+            IMAGE_TAG=${{ github.sha }}
+            DB_NAME=${{ env.DATABASE_NAME }}
+            DB_USER=${{ env.DATABASE_USER }}
+            DB_PASSWORD=${{ env.DATABASE_PASSWORD }}
+            DB_HOST=${{ env.DATABASE_HOST }}
+            DB_PORT=5432
+            AWS_REGION=${{ env.AWS_REGION }}
+            SECRET_KEY=${{ env.DJANGO_SECRET_KEY }}
+            EOT
 
             # Set environment variables
             export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
@@ -161,33 +164,14 @@ jobs:
             docker pull ${ECR_REPOSITORY_URL}:${IMAGE_TAG}
             
             # Update docker-compose and restart
-            ECR_REPOSITORY_URL=${ECR_REPOSITORY_URL} \
-            IMAGE_TAG=${IMAGE_TAG} \
-            DB_NAME=${DB_NAME} \
-            DB_USER=${DB_USER} \
-            DB_PASSWORD=${DB_PASSWORD} \
-            DB_HOST=${DB_HOST} \
-            DB_PORT=${DB_PORT} \
-            AWS_REGION=${AWS_REGION} \
-            SECRET_KEY=${SECRET_KEY} \
-            docker compose down
-
-            ECR_REPOSITORY_URL=${ECR_REPOSITORY_URL} \
-            IMAGE_TAG=${IMAGE_TAG} \
-            DB_NAME=${DB_NAME} \
-            DB_USER=${DB_USER} \
-            DB_PASSWORD=${DB_PASSWORD} \
-            DB_HOST=${DB_HOST} \
-            DB_PORT=${DB_PORT} \
-            AWS_REGION=${AWS_REGION} \
-            SECRET_KEY=${SECRET_KEY} \
-            docker compose up -d
+            docker compose --env-file .env down
+            docker compose --env-file .env up -d
             
             # Run migrations
-            docker compose exec -T backend python manage.py migrate
+            docker compose --env-file .env exec-T backend python manage.py migrate
             
             # Collect static files
-            docker compose exec -T backend python manage.py collectstatic --noinput
+            docker compose --env-file .env exec -T backend python manage.py collectstatic --noinput
           '
   build-frontend:
     needs: deploy-backend
