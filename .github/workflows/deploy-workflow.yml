@@ -159,8 +159,13 @@ jobs:
 
               # Login to ECR
               # aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
-              aws ecr get-login-password --region $AWS_REGION \
-                | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+              # aws ecr get-login-password --region $AWS_REGION \
+              #   | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+
+              ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+                AWS_REGION=$AWS_REGION \
+                aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+              '
 
               # Pull latest image
               docker pull $ECR_REPOSITORY_URL/$ECR_REPOSITORY:$IMAGE_TAG
