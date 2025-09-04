@@ -111,10 +111,10 @@ jobs:
         id: ssm-parameters
         run: |
           # Fetch all SSM parameters and set them as environment variables
-          echo "DATABASE_NAME=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_name" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
-          echo "DATABASE_USER=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_user" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
-          echo "DATABASE_PASSWORD=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_password" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
-          echo "DATABASE_HOST=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_host" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_DB=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_name" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_USER=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_user" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_password" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_host" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
           echo "DJANGO_SECRET_KEY=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/secret_key" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
           echo "AWS_REGION=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/aws/region" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
 
@@ -135,10 +135,10 @@ jobs:
             
             # Create a .env file with SSM parameters and copy it to EC2
             cat > .env <<EOF
-            DATABASE_NAME=${DATABASE_NAME}
-            DATABASE_USER=${DATABASE_USER}
-            DATABASE_PASSWORD=${DATABASE_PASSWORD}
-            DATABASE_HOST=${DATABASE_HOST}
+            POSTGRES_DB=${POSTGRES_DB}
+            POSTGRES_USER=${POSTGRES_USER}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            POSTGRES_HOST=${POSTGRES_HOST}
             DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
             AWS_REGION=${AWS_REGION}
             ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
