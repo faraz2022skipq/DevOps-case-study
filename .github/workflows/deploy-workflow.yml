@@ -140,6 +140,8 @@ jobs:
             IMAGE_TAG=${{ github.sha }}
             EOF
 
+            mkdir app/
+            
             scp -o StrictHostKeyChecking=no -i private_key .env ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
 
             # Copy docker-compose + nginx
