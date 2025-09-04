@@ -141,7 +141,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
             cd /home/ubuntu/app
 
-            cat > .env <<EOF
+            cat > .env <<'EOF'
             ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
             IMAGE_TAG=${{ github.sha }}
             DB_NAME=${{ env.DATABASE_NAME }}
@@ -152,7 +152,6 @@ jobs:
             AWS_REGION=${{ env.AWS_REGION }}
             SECRET_KEY=${{ env.DJANGO_SECRET_KEY }}
             EOF
-          '
 
             # Set environment variables
             export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
@@ -169,10 +168,10 @@ jobs:
             docker compose --env-file .env up -d
             
             # Run migrations
-            docker compose --env-file .env exec exec -T backend python manage.py migrate
+            docker compose --env-file .env exec-T backend python manage.py migrate
             
             # Collect static files
-            docker compose --env-file .env exec exec -T backend python manage.py collectstatic --noinput
+            docker compose --env-file .env exec -T backend python manage.py collectstatic --noinput
           '
   build-frontend:
     needs: deploy-backend
