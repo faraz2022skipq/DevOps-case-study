@@ -124,7 +124,6 @@ jobs:
           POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
           POSTGRES_HOST: ${{ env.POSTGRES_HOST }}
           DJANGO_SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
-          # AWS_REGION: ${{ env.AWS_REGION }}
         run: |
             echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
             
@@ -156,11 +155,6 @@ jobs:
             # Deploy application
             ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
               cd /home/ubuntu/app
-
-              # Login to ECR
-              # aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
-              # aws ecr get-login-password --region $AWS_REGION \
-              #   | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
 
               # Set environment variables
               export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
