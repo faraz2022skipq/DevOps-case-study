@@ -5,7 +5,7 @@ function App() {
   const [items, setItems] = useState([]);
 
   // const backendBaseUrl = "http://54.219.246.102";
-  const backendBaseUrl = process.env.REACT_APP_API_BASE;
+  // const backendBaseUrl = process.env.REACT_APP_API_BASE;
   const healthzEndpoint = `http://${process.env.REACT_APP_API_BASE}/healthz`;
   const itemsEndpoint = `http://${process.env.REACT_APP_API_BASE}/api/items/`;
 
