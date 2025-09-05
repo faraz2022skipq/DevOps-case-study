@@ -127,18 +127,18 @@ jobs:
         run: |
             echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
             
-            # Create a .env file with SSM parameters and copy it to EC2
-            # cat > .env <<EOF
-            # POSTGRES_DB=${POSTGRES_DB}
-            # POSTGRES_USER=${POSTGRES_USER}
-            # POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-            # POSTGRES_HOST=${POSTGRES_HOST}
-            # DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-            # AWS_REGION=${AWS_REGION}
-            # ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}
-            # ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
-            # IMAGE_TAG=${{ github.sha }}
-            # EOF
+            Create a .env file with SSM parameters and copy it to EC2
+            cat > .env <<EOF
+            POSTGRES_DB=${POSTGRES_DB}
+            POSTGRES_USER=${POSTGRES_USER}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            POSTGRES_HOST=${POSTGRES_HOST}
+            DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+            AWS_REGION=${AWS_REGION}
+            ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}
+            ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
+            IMAGE_TAG=${{ github.sha }}
+            EOF
 
             ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
             # Create main app directory
@@ -146,7 +146,7 @@ jobs:
             sudo chown -R ubuntu:ubuntu /home/ubuntu/app/
             '
 
-            # scp -o StrictHostKeyChecking=no -i private_key .env ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+            scp -o StrictHostKeyChecking=no -i private_key .env ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
 
             # Copy docker-compose + nginx
             scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
