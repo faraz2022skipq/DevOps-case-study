@@ -189,10 +189,11 @@ jobs:
           npm ci
           
       - name: Build frontend
-        env:
-          REACT_APP_API_BASE: ${{ secrets.EC2_USER }}
+        # env:
+        #   REACT_APP_API_BASE: "http://${{ secrets.EC2_USER }}"
         run: |
           cd frontend/frontend
+          export REACT_APP_API_BASE: "http://${{ secrets.EC2_USER }}"
           npm run build
           
       - name: Configure AWS credentials
