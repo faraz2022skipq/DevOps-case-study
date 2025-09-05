@@ -13,7 +13,7 @@ function App() {
   // Check health
   const checkHealth = async () => {
     try {
-      const res = await fetch(`http://${backendBaseUrl}/healthz`);
+      const res = await fetch(`http://54.193.80.240/healthz`);
       const data = await res.text();
       setHealthStatus(data);
     } catch (err) {
@@ -24,7 +24,7 @@ function App() {
   // Get items from RDS via backend
   const getItems = async () => {
     try {
-      const res = await fetch(`http://${backendBaseUrl}/api/items/`);
+      const res = await fetch(`http://54.193.80.240/api/items/`);
       const data = await res.json();
       setItems(data);
     } catch (err) {
