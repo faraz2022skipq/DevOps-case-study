@@ -146,7 +146,7 @@ jobs:
             sudo chown -R ubuntu:ubuntu /home/ubuntu/app/
             '
 
-            scp -o StrictHostKeyChecking=no -i private_key .env ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+            # scp -o StrictHostKeyChecking=no -i private_key .env ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
 
             # Copy docker-compose + nginx
             scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
