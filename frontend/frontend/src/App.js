@@ -44,11 +44,12 @@ function App() {
       <hr />
 
       <button onClick={getItems}>Get Items</button>
-      <ul>
+      <span>{setItems}</span>
+      {/* <ul>
         {items.map((item) => (
           <li key={item.id}>{item.name}</li>
         ))}
-      </ul>
+      </ul> */}
     </div>
   );
 }
