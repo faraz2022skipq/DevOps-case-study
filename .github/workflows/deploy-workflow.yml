@@ -128,17 +128,17 @@ jobs:
             echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
             
             # Create a .env file with SSM parameters and copy it to EC2
-            cat > .env <<EOF
-            POSTGRES_DB=${POSTGRES_DB}
-            POSTGRES_USER=${POSTGRES_USER}
-            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-            POSTGRES_HOST=${POSTGRES_HOST}
-            DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+            # cat > .env <<EOF
+            # POSTGRES_DB=${POSTGRES_DB}
+            # POSTGRES_USER=${POSTGRES_USER}
+            # POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            # POSTGRES_HOST=${POSTGRES_HOST}
+            # DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
             # AWS_REGION=${AWS_REGION}
             # ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}
             # ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
             # IMAGE_TAG=${{ github.sha }}
-            EOF
+            # EOF
 
             ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
             # Create main app directory
@@ -151,6 +151,7 @@ jobs:
             # Copy docker-compose + nginx
             scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
             scp -o StrictHostKeyChecking=no -i private_key -r nginx ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+            scp -o StrictHostKeyChecking=no -i private_key -r seed-values.sh ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
             
             # Deploy application
             ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
@@ -180,14 +181,9 @@ jobs:
               # Collect static files
               docker compose exec -T backend python manage.py collectstatic --noinput
 
-              # Insert sample data into PostgreSQL
-              # PGPASSWORD=${{env.POSTGRES_PASSWORD}} psql -h ${{env.POSTGRES_HOST}} -U ${{env.POSTGRES_USER}} -d ${{env.POSTGRES_DB}} -c "INSERT INTO items_item (name, description) VALUES ("'Sample_Item_1'", "'Inserted_via_GitHub_Action'"), ("'Sample_Item_2'", "'Inserted_via_GitHub_Action'"), ("'Sample_Item_3'", "'Inserted_via_GitHub_Action'");"
-              PGPASSWORD=${{env.POSTGRES_PASSWORD}} psql -h ${{env.POSTGRES_HOST}} -U ${{env.POSTGRES_USER}} -d ${{env.POSTGRES_DB}} << EOF
-              INSERT INTO items_item (name, description) VALUES 
-              ('Sample Item 1', 'Inserted via GitHub Action'),
-              ('Sample Item 2', 'Inserted via GitHub Action'),
-              ('Sample Item 3', 'Inserted via GitHub Action');
-              EOF
+              # Insert seed values to DB
+              bash seed-values.sh ${{ env.POSTGRES_HOST }} 5432 ${{ env.POSTGRES_DB }} ${{ env.POSTGRES_USER }} ${{ env.POSTGRES_PASSWORD }}
+
             ' 
   build-frontend:
     needs: deploy-backend
