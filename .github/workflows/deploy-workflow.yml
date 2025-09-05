@@ -190,7 +190,7 @@ jobs:
           
       - name: Build frontend
         env:
-          REACT_APP_API_BASE: "http://${{ secrets.EC2_USER }}"
+          REACT_APP_API_BASE: ${{ secrets.EC2_USER }}
         run: |
           cd frontend/frontend
           npm run build
