@@ -6,14 +6,13 @@ function App() {
 
   // const backendBaseUrl = "http://54.219.246.102";
   const backendBaseUrl = process.env.REACT_APP_API_BASE;
-  console.log("REACT_APP_API_BASE =", process.env.REACT_APP_API_BASE);
-  console.log("REACT_APP_API_BASE =", backendBaseUrl);
-
+  const healthzEndpoint = `http://${backendBaseUrl}/healthz`;
+  const itemsEndpoint = `http://${backendBaseUrl}/api/items/`;
 
   // Check health
   const checkHealth = async () => {
     try {
-      const res = await fetch(`http://54.193.80.240/healthz`);
+      const res = await fetch(healthzEndpoint);
       const data = await res.text();
       setHealthStatus(data);
     } catch (err) {
@@ -24,7 +23,7 @@ function App() {
   // Get items from RDS via backend
   const getItems = async () => {
     try {
-      const res = await fetch(`http://54.193.80.240/api/items/`);
+      const res = await fetch(itemsEndpoint);
       const data = await res.json();
       setItems(data);
     } catch (err) {
@@ -44,12 +43,11 @@ function App() {
       <hr />
 
       <button onClick={getItems}>Get Items</button>
-      <span>{setItems}</span>
-      {/* <ul>
+      <ul>
         {items.map((item) => (
           <li key={item.id}>{item.name}</li>
         ))}
-      </ul> */}
+      </ul>
     </div>
   );
 }
