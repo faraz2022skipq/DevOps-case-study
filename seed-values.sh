@@ -7,6 +7,9 @@ DB_NAME=$3
 DB_USER=$4
 DB_PASS=$5
 
+sudo apt update -y
+sudo apt install -y postgresql postgresql-contrib
+
 PGPASSWORD="$DB_PASS" psql \
   -h "$DB_HOST" \
   -p "$DB_PORT" \

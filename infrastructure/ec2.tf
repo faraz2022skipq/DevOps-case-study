@@ -17,9 +17,6 @@ resource "aws_instance" "app" {
       # Install dependencies
       apt-get install -y ca-certificates curl gnupg lsb-release unzip
 
-      # PostgreSQL Client Installation
-      sudo systemctl status postgresql 
-
       # Add Docker’s official GPG key
       install -m 0755 -d /etc/apt/keyrings
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
