@@ -149,7 +149,7 @@ jobs:
               export AWS_REGION="${{ env.AWS_REGION }}"
               export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
               export IMAGE_TAG=${{ github.sha }}
-              
+
               cd /home/ubuntu/app
 
               # Set environment variables
@@ -200,7 +200,7 @@ jobs:
           
       - name: Build frontend
         env:
-          REACT_APP_API_BASE: ${{ secrets.EC2_USER }}
+          REACT_APP_API_BASE: ${{ secrets.EC2_HOST }}
         run: |
           cd frontend/frontend
           npm run build
