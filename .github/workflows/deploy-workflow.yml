@@ -216,17 +216,17 @@ jobs:
           cd frontend
           aws s3 sync frontend/build/ s3://${{ secrets.S3_BUCKET_NAME }}/ --delete
   
-  # health-check:
-  #   needs: [deploy-backend, build-frontend]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Wait for deployment
-  #       run: sleep 30
+  health-check:
+    needs: [deploy-backend, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for deployment
+        run: sleep 30
         
-  #     - name: Check health endpoint
-  #       run: |
-  #         curl -f http://${{ secrets.EC2_HOST }}/healthz
+      - name: Check health endpoint
+        run: |
+          curl -f http://${{ secrets.EC2_HOST }}/healthz
           
-  #     - name: Check API endpoint
-  #       run: |
-  #         curl -f http://${{ secrets.EC2_HOST }}/api/items/
+      - name: Check API endpoint
+        run: |
+          curl -f http://${{ secrets.EC2_HOST }}/api/items/
