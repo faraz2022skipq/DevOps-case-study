@@ -8,6 +8,7 @@ function App() {
   // const backendBaseUrl = process.env.REACT_APP_API_BASE;
   const healthzEndpoint = `http://${process.env.REACT_APP_API_BASE}/healthz`;
   const itemsEndpoint = `http://${process.env.REACT_APP_API_BASE}/api/items/`;
+  // const itemsEndpoint = `http://54.183.205.70/api/items/`;
 
   // Check health
   const checkHealth = async () => {
@@ -25,7 +26,7 @@ function App() {
     try {
       const res = await fetch(itemsEndpoint);
       const data = await res.json();
-      setItems(data);
+      setItems(data.items);
     } catch (err) {
       setItems([{ id: 0, name: "Error fetching items" }]);
     }
@@ -44,7 +45,7 @@ function App() {
 
       <button onClick={getItems}>Get Items</button>
       <ul>
-        {items.map((item) => (
+        {items?.map((item) => (
           <li key={item.id}>{item.name}</li>
         ))}
       </ul>
