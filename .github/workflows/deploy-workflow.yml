@@ -10,12 +10,12 @@ env:
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
   PROJECT_NAME: ${{ vars.PROJECT_NAME }}
 
-# permissions for OIDC
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  # Run Django checks before building Docker image
   initial-test:
     runs-on: ubuntu-latest
     steps:
@@ -37,6 +37,7 @@ jobs:
           cd backend
           python manage.py check
 
+  # Build Docker image and push to AWS ECR
   build-and-push:
     needs: initial-test
     runs-on: ubuntu-latest
@@ -44,37 +45,32 @@ jobs:
       image-tag: ${{ steps.meta.outputs.tags }}
     
     steps:
-    # 1. Checkout code
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 2. Setup Python for backend tests
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'pip'
 
-    # 3. Install backend dependencies and run checks
     - name: Install dependencies and run checks
       run: |
         cd backend
         pip install -r requirements.txt
         python manage.py check
 
-    # 4. Configure AWS credentials using OIDC
+    # Configure AWS credentials and login to ECR
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
-    # 5. Login to Amazon ECR
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 6. Build and push Docker image
     - name: Build and push Docker image
       run: |
         cd backend
@@ -84,6 +80,7 @@ jobs:
         docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
         docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
     
+  # Deploy backend to EC2 using docker-compose
   deploy-backend:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -102,10 +99,10 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Fetch secrets from SSM Parameter Store
       - name: Fetch SSM Parameters
         id: ssm-parameters
         run: |
-          # Fetch all SSM parameters and set them as environment variables
           echo "POSTGRES_DB=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_name" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
           echo "POSTGRES_USER=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_user" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
           echo "POSTGRES_PASSWORD=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_password" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
@@ -113,6 +110,7 @@ jobs:
           echo "DJANGO_SECRET_KEY=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/secret_key" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
           echo "AWS_REGION=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/aws/region" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
 
+      # SSH into EC2, copy files, and deploy containers
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
@@ -128,19 +126,15 @@ jobs:
             echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
 
             ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-            # Create main app directory
             sudo mkdir -p /home/ubuntu/app/
             sudo chown -R ubuntu:ubuntu /home/ubuntu/app/
             '
 
-            # Copy docker-compose + nginx
             scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
             scp -o StrictHostKeyChecking=no -i private_key -r nginx ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
             scp -o StrictHostKeyChecking=no -i private_key -r seed-values.sh ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
             
-            # Deploy application
             ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-
               export POSTGRES_DB="${{ env.POSTGRES_DB }}"
               export POSTGRES_USER="${{ env.POSTGRES_USER }}"
               export POSTGRES_PASSWORD="${{ env.POSTGRES_PASSWORD }}"
@@ -152,34 +146,21 @@ jobs:
 
               cd /home/ubuntu/app
 
-              # Set environment variables
-              export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
-              export IMAGE_TAG=${{ github.sha }}
-              
-              # Login to ECR
               aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
               
-
-              # Pull latest image
               docker pull $ECR_REPOSITORY_URL/$ECR_REPOSITORY:$IMAGE_TAG
 
-              # Restart services using .env file
               docker compose down
               docker compose up -d
 
-              # Generate new migrations
               docker compose exec -T backend python manage.py makemigrations
-
-              # Run migrations
               docker compose exec -T backend python manage.py migrate
-
-              # Collect static files
               docker compose exec -T backend python manage.py collectstatic --noinput
 
-              # Insert seed values to DB
               bash seed-values.sh ${{ env.POSTGRES_HOST }} ${{ env.POSTGRES_DB }} ${{ env.POSTGRES_USER }} ${{ env.POSTGRES_PASSWORD }}
+            '
 
-            ' 
+  # Build frontend and deploy to S3
   build-frontend:
     needs: deploy-backend
     runs-on: ubuntu-latest
@@ -205,6 +186,7 @@ jobs:
           cd frontend/frontend
           npm run build
           
+      # Deploy built frontend to S3
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -216,6 +198,7 @@ jobs:
           cd frontend
           aws s3 sync frontend/build/ s3://${{ secrets.S3_BUCKET_NAME }}/ --delete
   
+  # Perform health checks after deployment
   health-check:
     needs: [deploy-backend, build-frontend]
     runs-on: ubuntu-latest
