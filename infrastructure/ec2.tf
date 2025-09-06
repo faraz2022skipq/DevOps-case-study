@@ -83,6 +83,6 @@ resource "aws_key_pair" "case_study_key_pair" {
 
 resource "local_file" "private_key" {
   content         = tls_private_key.case_study_key.private_key_pem
-  filename        = "${path.module}/my-keypair.pem"
+  filename        = "${path.module}/case_study_key_pair.pem"
   file_permission = "0600"
 }
