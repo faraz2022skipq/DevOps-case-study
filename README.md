@@ -49,7 +49,7 @@ This project demonstrates a production-ready deployment of a **Django + PostgreS
 ## Architecture Diagram
 Following is the infrastructure diagram for our Single Page Application (SPA) deployment on AWS.
 
-![SPA Deployment Workflow](/DevOps-case-study-submission/DevOps_case_study_Draw_IO.png)
+![SPA Deployment Workflow](DevOps_case_study_Draw_IO.png)
 
 ## Setup Instructions
 
