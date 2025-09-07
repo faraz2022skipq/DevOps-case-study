@@ -49,7 +49,7 @@ This project demonstrates a production-ready deployment of a **Django + PostgreS
 ## Architecture Diagram
 Following is the infrastructure diagram for our Single Page Application (SPA) deployment on AWS.
 
-![SPA Deployment Workflow](/DevOps-case-study/DevOps_case_study_Draw_IO.png)
+![SPA Deployment Workflow](/DevOps-case-study-submission/DevOps_case_study_Draw_IO.png)
 
 ## Setup Instructions
 
@@ -105,6 +105,19 @@ Following are few of the information about the resources, inputs and outputs use
 
 No modules.
 
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region where all resources will be created | `string` | `"us-west-1"` | no |
+| <a name="input_db_password"></a> [db\_password](#input\_db\_password) | Master password for the PostgreSQL database | `any` | n/a | yes |
+| <a name="input_db_username"></a> [db\_username](#input\_db\_username) | Master username for the PostgreSQL database | `string` | `"appuser"` | no |
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment identifier (e.g., dev, staging, production) | `string` | `"production"` | no |
+| <a name="input_github_org"></a> [github\_org](#input\_github\_org) | GitHub organization or user that owns the repository | `string` | n/a | yes |
+| <a name="input_github_repo"></a> [github\_repo](#input\_github\_repo) | GitHub repository name used in CI/CD pipeline | `string` | n/a | yes |
+| <a name="input_image_tag"></a> [image\_tag](#input\_image\_tag) | Docker image tag for the backend service (default: latest) | `string` | `"latest"` | no |
+| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix for project resources | `string` | `"junior-devops-case-study"` | no |
+
 ## Resources
 
 | Name | Type |
@@ -157,19 +170,6 @@ No modules.
 | [random_password.db_password](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
 | [tls_private_key.case_study_key](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/private_key) | resource |
 | [aws_iam_policy_document.ec2_assume](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region where all resources will be created | `string` | `"us-west-1"` | no |
-| <a name="input_db_password"></a> [db\_password](#input\_db\_password) | Master password for the PostgreSQL database | `any` | n/a | yes |
-| <a name="input_db_username"></a> [db\_username](#input\_db\_username) | Master username for the PostgreSQL database | `string` | `"appuser"` | no |
-| <a name="input_environment"></a> [environment](#input\_environment) | Environment identifier (e.g., dev, staging, production) | `string` | `"production"` | no |
-| <a name="input_github_org"></a> [github\_org](#input\_github\_org) | GitHub organization or user that owns the repository | `string` | n/a | yes |
-| <a name="input_github_repo"></a> [github\_repo](#input\_github\_repo) | GitHub repository name used in CI/CD pipeline | `string` | n/a | yes |
-| <a name="input_image_tag"></a> [image\_tag](#input\_image\_tag) | Docker image tag for the backend service (default: latest) | `string` | `"latest"` | no |
-| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix for project resources | `string` | `"junior-devops-case-study"` | no |
 
 ## Outputs
 
