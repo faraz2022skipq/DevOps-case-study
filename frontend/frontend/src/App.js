@@ -5,7 +5,7 @@ function App() {
   const [items, setItems] = useState([]);
 
   const healthzEndpoint = `http://${process.env.REACT_APP_API_BASE}/healthz`;
-  const itemsEndpoint = `http://${process.env.REACT_APP_API_BASE}/api/items/`;
+  const itemsEndpoint = `http://${process.env.REACT_APP_API_BASE}/api/items`;
 
   // Check health
   const checkHealth = async () => {

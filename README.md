@@ -84,6 +84,11 @@ The run guide is present in ```deploy.md``` and ```rollback.md``` contains the r
 # Terraform Docs
 Following are few of the information about the resources, inputs and outputs used in the infrastructure of this project.
 
+# Tfvars Variables to be provided
+Following are two variables that's need to be provided.
+  - github_org (GitHub organization or user that owns the repository)
+  - github_repo (GitHub repository name)
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -110,7 +115,6 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region where all resources will be created | `string` | `"us-west-1"` | no |
-| <a name="input_db_password"></a> [db\_password](#input\_db\_password) | Master password for the PostgreSQL database | `any` | n/a | yes |
 | <a name="input_db_username"></a> [db\_username](#input\_db\_username) | Master username for the PostgreSQL database | `string` | `"appuser"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment identifier (e.g., dev, staging, production) | `string` | `"production"` | no |
 | <a name="input_github_org"></a> [github\_org](#input\_github\_org) | GitHub organization or user that owns the repository | `string` | n/a | yes |

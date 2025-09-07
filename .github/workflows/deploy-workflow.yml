@@ -212,7 +212,7 @@ jobs:
           
       - name: Check API endpoint
         run: |
-          curl -f http://${{ secrets.EC2_HOST }}/api/items/
+          curl -f http://${{ secrets.EC2_HOST }}/api/items
 
   # Rollback backend if health check fails
   rollback-backend:

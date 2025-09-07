@@ -16,12 +16,6 @@ variable "db_username" {
   default     = "appuser"
 }
 
-# Database password (sensitive value)
-variable "db_password" {
-  description = "Master password for the PostgreSQL database"
-  sensitive   = true
-}
-
 # Environment name
 variable "environment" {
   description = "Environment identifier (e.g., dev, staging, production)"
@@ -37,7 +31,7 @@ variable "github_org" {
 
 # GitHub repository name
 variable "github_repo" {
-  description = "GitHub repository name used in CI/CD pipeline"
+  description = "GitHub repository name"
   type        = string
 }
 
