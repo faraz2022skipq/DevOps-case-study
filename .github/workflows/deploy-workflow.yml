@@ -1,0 +1,306 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # Run Django checks before building Docker image
+  initial-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Run Django checks
+        run: |
+          cd backend
+          python manage.py check
+
+  # Build Docker image and push to AWS ECR
+  build-and-push:
+    needs: initial-test
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install dependencies and run checks
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        python manage.py check
+
+    # Configure AWS credentials and login to ECR
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Docker image
+      run: |
+        cd backend
+        docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
+        docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+        docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+    
+  # Deploy backend to EC2 using docker-compose
+  deploy-backend:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Fetch secrets from SSM Parameter Store
+      - name: Fetch SSM Parameters
+        id: ssm-parameters
+        run: |
+          echo "POSTGRES_DB=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_name" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_USER=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_user" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_password" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_host" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "DJANGO_SECRET_KEY=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/secret_key" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "AWS_REGION=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/aws/region" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+
+      # SSH into EC2, copy files, and deploy containers
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOSTNAME: ${{ secrets.EC2_HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}
+
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_HOST: ${{ env.POSTGRES_HOST }}
+          DJANGO_SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
+        run: |
+            echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+
+            ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+            sudo mkdir -p /home/ubuntu/app/
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/app/
+            '
+
+            scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+            scp -o StrictHostKeyChecking=no -i private_key -r nginx ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+            scp -o StrictHostKeyChecking=no -i private_key -r seed-values.sh ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+            
+            ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+              export POSTGRES_DB="${{ env.POSTGRES_DB }}"
+              export POSTGRES_USER="${{ env.POSTGRES_USER }}"
+              export POSTGRES_PASSWORD="${{ env.POSTGRES_PASSWORD }}"
+              export POSTGRES_HOST="${{ env.POSTGRES_HOST }}"
+              export DJANGO_SECRET_KEY="${{ env.DJANGO_SECRET_KEY }}"
+              export AWS_REGION="${{ env.AWS_REGION }}"
+              export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+              export IMAGE_TAG=${{ github.sha }}
+
+              cd /home/ubuntu/app
+
+              aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+              
+              docker pull $ECR_REPOSITORY_URL/$ECR_REPOSITORY:$IMAGE_TAG
+
+              docker compose down
+              docker compose up -d
+
+              docker compose exec -T backend python manage.py makemigrations
+              docker compose exec -T backend python manage.py migrate
+              docker compose exec -T backend python manage.py collectstatic --noinput
+
+              bash seed-values.sh ${{ env.POSTGRES_HOST }} ${{ env.POSTGRES_DB }} ${{ env.POSTGRES_USER }} ${{ env.POSTGRES_PASSWORD }}
+            '
+
+  # Build frontend and deploy to S3
+  build-frontend:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/frontend/package-lock.json
+          
+      - name: Install dependencies
+        run: |
+          cd frontend/frontend
+          npm ci
+          
+      - name: Build frontend
+        env:
+          REACT_APP_API_BASE: ${{ secrets.EC2_HOST }}
+        run: |
+          cd frontend/frontend
+          npm run build
+          
+      # Deploy built frontend to S3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Deploy to S3
+        run: |
+          cd frontend
+          aws s3 sync frontend/build/ s3://${{ secrets.S3_BUCKET_NAME }}/ --delete
+  
+  # Perform health checks after deployment
+  health-check:
+    needs: [deploy-backend, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for deployment
+        run: sleep 30
+        
+      - name: Check health endpoint
+        run: |
+          curl -f http://${{ secrets.EC2_HOST }}/healthz
+          
+      - name: Check API endpoint
+        run: |
+          curl -f http://${{ secrets.EC2_HOST }}/api/items/
+
+  # Rollback backend if health check fails
+  rollback-backend:
+    runs-on: ubuntu-latest
+    needs: health-check
+    if: failure()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      # Fetch secrets from SSM Parameter Store
+      - name: Fetch SSM Parameters
+        id: ssm-parameters
+        run: |
+          echo "POSTGRES_DB=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_name" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_USER=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_user" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_password" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "POSTGRES_HOST=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/database_host" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "DJANGO_SECRET_KEY=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/django/secret_key" --region ${{ env.AWS_REGION }} --with-decryption --query Parameter.Value --output text)" >> $GITHUB_ENV
+          echo "AWS_REGION=$(aws ssm get-parameter --name "/${{ env.PROJECT_NAME }}/aws/region" --region ${{ env.AWS_REGION }} --query Parameter.Value --output text)" >> $GITHUB_ENV
+
+      - name: Deploy previous Docker image
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOSTNAME: ${{ secrets.EC2_HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_HOST: ${{ env.POSTGRES_HOST }}
+          DJANGO_SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+          sudo mkdir -p /home/ubuntu/app/
+          sudo chown -R ubuntu:ubuntu /home/ubuntu/app/
+          '
+
+          scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+          scp -o StrictHostKeyChecking=no -i private_key -r nginx ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+          scp -o StrictHostKeyChecking=no -i private_key -r seed-values.sh ${USER_NAME}@${HOSTNAME}:/home/ubuntu/app/
+          
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+            export POSTGRES_DB="${{ env.POSTGRES_DB }}"
+            export POSTGRES_USER="${{ env.POSTGRES_USER }}"
+            export POSTGRES_PASSWORD="${{ env.POSTGRES_PASSWORD }}"
+            export POSTGRES_HOST="${{ env.POSTGRES_HOST }}"
+            export DJANGO_SECRET_KEY="${{ env.DJANGO_SECRET_KEY }}"
+            export AWS_REGION="${{ env.AWS_REGION }}"
+            export ECR_REPOSITORY="${{ env.ECR_REPOSITORY }}"
+            export ECR_REPOSITORY_URL=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+
+            
+            # Get the previous image tag from ECR
+            PREVIOUS_TAG=$(aws ecr describe-images \
+              --repository-name $ECR_REPOSITORY \
+              --region ${{ env.AWS_REGION }} \
+              --query "sort_by(imageDetails,& imagePushedAt)[-2].imageTags[0]" \
+              --output text)
+
+            echo "Previous tag: $PREVIOUS_TAG"
+
+            # Pull previous image and tag as latest
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            docker pull $ECR_REPOSITORY_URL:$PREVIOUS_TAG
+            docker tag $ECR_REPOSITORY_URL:$PREVIOUS_TAG $ECR_REPOSITORY_URL:latest
+
+            cd /home/ubuntu/app
+            docker compose down
+            docker compose up -d
+
+            docker compose exec -T backend python manage.py makemigrations
+            docker compose exec -T backend python manage.py migrate
+            docker compose exec -T backend python manage.py collectstatic --noinput
+
+            bash seed-values.sh ${{ env.POSTGRES_HOST }} ${{ env.POSTGRES_DB }} ${{ env.POSTGRES_USER }} ${{ env.POSTGRES_PASSWORD }}
+          '
